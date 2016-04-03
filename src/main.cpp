@@ -1,17 +1,10 @@
-#include <Arduino.h>
-//ESP8266 Core WiFi Library (you most likely already have this in your sketch)
 #include <ESP8266WiFi.h>
-//Local DNS Server used for redirecting all requests to the configuration portal
-#include <DNSServer.h>
-//Local WebServer used to serve the configuration portal
-#include <ESP8266WebServer.h>
-// Arduino over the air update
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-//https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <DNSServer.h>
 #include <WiFiManager.h>
-//HTU21D Humidity Sensor
+
 #include <Htu21d.h>
 
 
@@ -55,23 +48,16 @@ void setup()
   Serial.println("*OTA: Ready");
   Serial.print("*OTA: IP address: ");Serial.println(WiFi.localIP());
   // Init the humidity sensor
-  ArduinoOTA.begin();
   while (!htu.begin()) {
     Serial.println("Couldn't find sensor!");
-    delay(5);
+    delay(100);
   }
 }
 
 void loop()
 {
-  // turn the LED on (HIGH is the voltage level)
-  digitalWrite(LED_BUILTIN, HIGH);
-  // wait for a second
-  delay(1000);
-  // turn the LED off by making the voltage LOW
-  digitalWrite(LED_BUILTIN, LOW);
-   // wait for a second
-  delay(1000);
-  Serial.print("Temp: "); Serial.println(htu.readTemperature());
-  //Serial.print("\t\tHum: "); Serial.println(htu.readHumidity());
+  ArduinoOTA.handle();
+  Serial.print("Temp: "); Serial.print(htu.readTemperature());
+  Serial.print("\tHum: "); Serial.println(htu.readHumidity());
+  delay(500);
 }
