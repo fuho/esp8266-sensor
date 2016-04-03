@@ -59,5 +59,4 @@ void loop()
   ArduinoOTA.handle();
   Serial.print("Temp: "); Serial.print(htu.readTemperature());
   Serial.print("\tHum: "); Serial.println(htu.readHumidity());
-  delay(500);
 }

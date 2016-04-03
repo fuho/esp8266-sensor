@@ -3,6 +3,7 @@
 #include <util/delay.h>
 #endif
 
+const float ERROR_VALUE = 9000.1;
 Htu21d::Htu21d() {
 }
 
@@ -26,19 +27,28 @@ void Htu21d::reset(void) {
   delay(15);
 }
 
+boolean waitUntilAvailable(int watchDogMillis){
+  if(watchDogMillis < 0){
+    while (!Wire.available()) {}
+  } else {
+    unsigned long endMillis = millis() + watchDogMillis;
+    while (!Wire.available() && millis() < endMillis) {}//Wait
+  }
+}
+
+boolean waitUntilAvailable(){
+  return waitUntilAvailable(-1);
+}
 
 float Htu21d::readTemperature(void) {
-
-  // OK lets ready!
   Wire.beginTransmission(HTU21DF_I2CADDR);
   Wire.write(HTU21DF_READTEMP);
   Wire.endTransmission();
-
   delay(50); // add delay between request and actual read!
-
   Wire.requestFrom(HTU21DF_I2CADDR, 3);
-  while (!Wire.available()) {}
-
+  if(!waitUntilAvailable(1000)){
+    return ERROR_VALUE;
+  };
   uint16_t t = Wire.read();
   t <<= 8;
   t |= Wire.read();
@@ -63,7 +73,9 @@ float Htu21d::readHumidity(void) {
   delay(50); // add delay between request and actual read!
 
   Wire.requestFrom(HTU21DF_I2CADDR, 3);
-  while (!Wire.available()) {}
+  if(!waitUntilAvailable(1000)){
+    return ERROR_VALUE;
+  };
 
   uint16_t h = Wire.read();
   h <<= 8;
