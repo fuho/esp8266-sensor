@@ -3,7 +3,7 @@
 #include <util/delay.h>
 #endif
 
-const float ERROR_VALUE = 9000.1;
+const float ERROR_VALUE = 0.0;
 Htu21d::Htu21d() {
 }
 
