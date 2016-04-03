@@ -50,7 +50,7 @@ void setup()
   // Init the humidity sensor
   while (!htu.begin()) {
     Serial.println("Couldn't find sensor!");
-    delay(100);
+    delay(500);
   }
 }
 
