@@ -4,13 +4,49 @@
 #include <ArduinoOTA.h>
 #include <DNSServer.h>
 #include <WiFiManager.h>
+#include <PubSubClient.h>
 
 #include <Htu21d.h>
 
+//const char* mqtt_server = "iot.eclipse.org";
+const char* mqtt_server = "dotko.co";
 
 //Initialization
+// PubSub
+WiFiClient espClient;
+PubSubClient pubSubClient(espClient);
+long lastMsg = 0;
+long lastReconnectAttempt = 0;
+char msg[50];
+int value = 0;
 // Sensor
 Htu21d htu = Htu21d();
+
+boolean reconnect() {
+  Serial.print("*PubSub: Attempting MQTT connection...");
+  // Attempt to connect
+  if (pubSubClient.connect("ESP8266Client")) {
+    Serial.println("connected");
+    // Once connected, publish an announcement...
+    pubSubClient.publish("outTopic", "hello world");
+    // ... and resubscribe
+    pubSubClient.subscribe("inTopic");
+  } else {
+    Serial.print("failed, rc=");
+    Serial.println(pubSubClient.state());
+  }
+  return pubSubClient.connected();
+}
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("#MQTT: Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
 
 void setup()
 {
@@ -47,16 +83,46 @@ void setup()
   ArduinoOTA.begin();
   Serial.println("*OTA: Ready");
   Serial.print("*OTA: IP address: ");Serial.println(WiFi.localIP());
+  // Init the PubSub Client
+  pubSubClient.setServer(mqtt_server, 1883);
+  pubSubClient.setCallback(callback);
+  lastReconnectAttempt = 0;
   // Init the humidity sensor
   while (!htu.begin()) {
     Serial.println("Couldn't find sensor!");
-    delay(500);
+    delay(100);
   }
 }
 
 void loop()
 {
   ArduinoOTA.handle();
-  Serial.print("Temp: "); Serial.print(htu.readTemperature());
-  Serial.print("\tHum: "); Serial.println(htu.readHumidity());
+  if (!pubSubClient.connected()) {
+      if (lastReconnectAttempt + 10000 < millis()) {
+        lastReconnectAttempt = millis();
+        // Attempt to reconnect
+        if (reconnect()) {
+          lastReconnectAttempt = 0;
+        }
+      }
+  } else {
+    pubSubClient.loop();
+  }
+  float temperature = htu.readTemperature();
+  float humidity = htu.readHumidity();
+  Serial.print("Temp: "); Serial.print(temperature);
+  Serial.print("\tHum: "); Serial.println(humidity);
+  long now = millis();
+  if (now > lastMsg + 2000) {
+    lastMsg = now;
+    ++value;
+    snprintf (
+      msg, 75, "{\"temperature\":\"%ld\",\"humidity\":\"%ld\"}",
+      (int) (temperature * 100),
+      (int) (humidity * 100)
+    );
+    Serial.print("Publish message: ");Serial.println(msg);
+    pubSubClient.publish("outTopic", msg);
+  }
+  delay(350);
 }
